@@ -1,0 +1,431 @@
+import controlP5.*; // for the slider and controllers
+ControlP5 cp5;
+
+import processing.video.*; /// for the amount of mevement
+Capture video; // Variable for capture device
+PImage prevFrame; // Previous Frame
+float threshold = 50; // How different must a pixel be to be a "motion" pixel
+
+float Xchange=0; // how much the movemnt influences the x in the sketches
+
+import processing.sound.*; // import sonia for the noise analysis
+AudioIn input;
+Amplitude analyzer;
+
+import SimpleOpenNI.*;  // for the kinect
+SimpleOpenNI kinect;
+
+int maxUsers =6;
+int [] users  = new int[maxUsers+1] ; //array starts counting at 0 - kinect starts counting at 1. User 0 is set unactive. 
+float Hue=0;
+
+PGraphics freeDrawing;   //for the second layer
+
+
+// this describes the slider 
+public float TIME = 0;
+int s = 0; 
+int rangeStart=0;
+int rangeEnd=50000;
+
+
+//the volume I am getting and sending it to the second tab
+float volume1;
+
+
+ArrayList <Ball> balls = new ArrayList <Ball> ();
+
+
+int nuM=5; //the number of ball the Array is going tohave in the first iteration
+float rad= 5; //the radius the balls are gonna have at the begining
+float UsersDist =0; //this decides how much of heights is used based on the distance between users
+
+void setup() {
+  
+  ////////////////////////////////////Audio starting 
+  // Start listening to the microphone
+  // Create an Audio input and grab the 1st channel
+  input = new AudioIn(this, 0);
+  // start the Audio Input
+  input.start();
+  // create a new Amplitude analyzer
+  analyzer = new Amplitude(this);
+  // Patch the input to an volume analyzer
+  analyzer.input(input);
+  
+  ////////////////////////////////////////Here I am enabling the Kinect
+  kinect = new SimpleOpenNI(this);
+  kinect.enableDepth();
+  kinect.enableUser();
+  
+  //////////////////////////////starting the video input
+    video = new Capture(this, 320, 240, 30);
+  prevFrame = createImage(video.width,video.height,RGB);   // Create an empty image the same size as the video
+ video.start();
+
+
+
+  size(1700, 1000);
+  
+  colorMode(HSB);
+
+  background(255);
+  smooth();
+
+  //this is where I initiate the other layer for drawing  
+  freeDrawing = createGraphics(width + rangeEnd, height-29);
+
+    
+
+
+
+  //this is where DEFINE the slider
+
+  cp5 = new ControlP5(this); 
+  cp5.addSlider("TIME")
+
+    //Here is how the slider looks
+    .setRange(rangeEnd, rangeStart)
+      .setPosition(0, height-29)
+        .setSize(width, 29)
+          .setValue(0) 
+
+            //     .setNumberOfTickMarks(20)
+            //     .setColorTickMark(color(255)) 
+            //     .showTickMarks(true)
+            //     .snapToTickMarks(false)
+
+            .setHandleSize(20)
+              .setColorForeground(color(100))
+                .setColorActive(color(0)) 
+                  .setColorBackground(color(150));
+
+  cp5.getController("TIME").getCaptionLabel().align(ControlP5.RIGHT, ControlP5.CENTER).setPaddingX(20).setSize(15);
+  cp5.getController("TIME").getValueLabel().align(ControlP5.LEFT, ControlP5.CENTER).setPaddingX(20).setSize(15);
+}
+
+void draw() {
+
+  fill(255);
+  rect(0, 0, width, height);
+  
+    ////////////////////////////////////////////////////////////////// Capture video
+  if (video.available()) {
+    // Save previous frame for motion detection!!
+    prevFrame.copy(video,0,0,video.width,video.height,0,0,video.width,video.height);
+    prevFrame.updatePixels();
+    video.read();
+  }
+  
+  loadPixels();
+  video.loadPixels();
+  prevFrame.loadPixels();
+  
+  // Begin loop to walk through every pixel
+  // Start with a total of 0
+  float totalMotion = 0;
+  
+  // Sum the brightness of each pixel
+  for (int i = 0; i < video.pixels.length; i ++ ) {
+    // Step 2, what is the current color
+    color current = video.pixels[i];
+    
+    // Step 3, what is the previous color
+    color previous = prevFrame.pixels[i];
+    
+    // Step 4, compare colors (previous vs. current)
+    float r1 = red(current); 
+    float g1 = green(current);
+    float b1 = blue(current);
+    float r2 = red(previous); 
+    float g2 = green(previous);
+    float b2 = blue(previous);
+    
+    // Motion for an individual pixel is the difference between the previous color and current color.
+    float diff = dist(r1,g1,b1,r2,g2,b2);
+    // totalMotion is the sum of all color differences. 
+    totalMotion += diff; 
+  }
+  
+  // averageMotion is total motion divided by the number of pixels analyzed.
+  float avgMotion = totalMotion / video.pixels.length; 
+  
+  // Draw a circle based on average motion
+  smooth();
+  noStroke();
+  fill(255,0,0);
+  Xchange = map(avgMotion, 0,70, 0, 15);
+  println("avgMotion", avgMotion);
+  
+  
+  ////////////////////////here I analize the volume to change the color/////////////////////////////////////
+  volume1 = analyzer.analyze();
+  
+  
+  
+  ///////////////////////////////////////////////here I am getting the number of users from the Kinect
+  kinect.update();
+  
+  
+  kinect.getNumberOfUsers();
+  //println(kinect.getNumberOfUsers());
+  
+
+  
+    // instantiate the rect depth to 0 this is needed for the distance
+  float d = 0;
+  
+  float NumberOfUsers = kinect.getNumberOfUsers();
+  int numberOfActiveUsers = kinect.getNumberOfUsers() ; 
+
+  
+  if(NumberOfUsers==0){rad = 5 ;} else if (NumberOfUsers==1){rad = 20 ;}else if (NumberOfUsers==2){rad = 30 ;}else if (NumberOfUsers==4){rad = 40 ;}else if (NumberOfUsers==5){rad = 50;}else if (NumberOfUsers==6){rad = 60 ;}
+   nuM = 3 + int(random(-2,2));
+   
+  if(NumberOfUsers==0){nuM = 1+ int(random(-1,0));} else if (NumberOfUsers==1){nuM = 2 + int(random(-1,2));}else if (NumberOfUsers==2){nuM = 4 + int(random(-1,3));}else if (NumberOfUsers==4){nuM = 8 + int(random(-1,5));}else if (NumberOfUsers==5){nuM = 10 + int(random(-1,6));}else if (NumberOfUsers==6){nuM = 12 + int(random(-1,7));}
+
+////////////////////////////////////////////////hand open closed starts
+  for (int i = 0; i <= maxUsers; i++){
+ 
+ if(i ==0) { 
+             users[i] = 0; 
+            }
+ 
+ else if (i <= numberOfActiveUsers)  {        
+        users[i] = i;
+       }
+       
+ else  //setting inactive users
+           {   
+                users[i] = 0; 
+           }
+           }  
+    
+           
+
+       float handDistance = 0;
+       float sumHandDistances= 0;
+       float averageHandDistance =0;
+for (int j = 1; j <= maxUsers; j++){//calculating hand distance
+ if (users[j] != 0)   //only looking at active users
+   {
+   println("looking at user", j);
+ // if (kinect.isTrackingSkeleton(j)) {
+ 
+      int   userId = j ; 
+        kinect.startTrackingSkeleton(userId);
+         // drawSkeleton(userId);
+         // get the distance between joints
+       handDistance = getJointDistance(userId, SimpleOpenNI.SKEL_LEFT_HAND,SimpleOpenNI.SKEL_RIGHT_HAND);
+       sumHandDistances += handDistance;
+
+   //    }  
+      
+       
+    }
+
+}
+averageHandDistance = sumHandDistances / numberOfActiveUsers; 
+//println("average", averageHandDistance);
+//d = map(averageHandDistance, 0, 2000, 0, height);
+float col=0;
+if (averageHandDistance>=400){
+col = map(averageHandDistance, 300, 600, 80, 0);
+}else if (averageHandDistance<400){
+col = map(averageHandDistance, -400, 300, 150, 80);  }
+Hue=col;
+
+       float userDistance = 0;
+       float sumUserDistances= 0;
+       float averageUserDistance = 0;
+
+for (int j = 1; j <= maxUsers; j++){/////////////////////userdistance
+
+ if (users[j] != 0)   //only looking at active users
+   {
+   println("looking at user", j);
+ // if (kinect.isTrackingSkeleton(j)) {
+ 
+   for( int k = 0; k <=numberOfActiveUsers; k++)
+   {
+    
+   int     userId = j; 
+   // int  userIdForDistance = j; 
+    int  otherUser = k; 
+        kinect.startTrackingSkeleton(userId);
+//.drawSkeleton(userId);
+
+       
+       userDistance = getUsersDistance (userId, SimpleOpenNI.SKEL_TORSO, otherUser, SimpleOpenNI.SKEL_TORSO );
+   }
+      println("******************************"); 
+ println(" user distance", userDistance); 
+
+       sumUserDistances += userDistance;
+       
+       
+
+   //    }  
+      
+       
+    }
+
+}
+  
+
+averageUserDistance = sumUserDistances/2;
+UsersDist = map(averageUserDistance,  400, 2000, 0, height/2);
+//println("******************************"); 
+
+//println("mapped user distance", userDista); 
+fill(0);
+
+
+/////////////////////////////////////////////////////////777and ope close ends
+
+
+  s=s+2; //this is what makes objects appear in the right place while the background slides
+
+
+
+
+
+  
+
+  pushMatrix();//this keeps things in order
+     
+    translate(-s+TIME, 0);//this makes the whole background move, together with the drawing layer
+
+
+     //this is time related
+     if (frameCount % 55 == 0) {
+       balls.add(new Ball());
+          }
+
+     // update and display all balls
+     for (int i=balls.size ()-1; i>=0; i--) {
+        Ball m = balls.get(i);
+        m.update();
+        m.display();
+       
+          }
+          
+          
+            //this is the second layer, it makes it possible to draw over the drawing
+            freeDrawing.beginDraw();
+  
+           if (mousePressed == true) {
+             freeDrawing.line(mouseX+s-TIME, mouseY, pmouseX+s-TIME, pmouseY);
+               }
+            freeDrawing.endDraw();
+  
+     image(freeDrawing, 0, 0);
+
+  popMatrix();//this keeps things in order
+
+  //delay(50);
+}
+
+
+
+void drawJoint(int userId, int jointID) { 
+  PVector joint = new PVector();
+
+float confidence = kinect.getJointPositionSkeleton(userId, jointID,
+joint);
+if(confidence < 0.5){
+return; 
+}
+
+PVector convertedJoint = new PVector();
+kinect.convertRealWorldToProjective(joint, convertedJoint);
+ellipse(convertedJoint.x, convertedJoint.y, 5, 5);
+}
+// user-tracking callbacks!
+void onNewUser(SimpleOpenNI kinect, int userId){
+  println("Start skeleton tracking");
+  kinect.startTrackingSkeleton(userId);
+  
+}
+
+
+
+float getJointDistance(int userId,int joint1Id,int joint2Id)
+{
+  float d;    // to store final distance value
+ 
+  // two PVectors to hold the position of two joints
+  PVector joint1 = new PVector();
+  PVector joint2 = new PVector();
+ 
+  // get 3D position of both joints
+  kinect.getJointPositionSkeleton(userId,joint1Id,joint1);
+  kinect.getJointPositionSkeleton(userId,joint2Id,joint2);
+ 
+  d = distance3D(joint1,joint2);    // calcualte the distance between the two joints
+ 
+  return d;
+}
+
+
+// calculate the distance between any two points in 3D space and return it as a float
+float distance3D(PVector point1, PVector point2)
+{
+   float diff_x, diff_y, diff_z;    // to store differences along x, y and z axes
+   float distance;                  // to store final distance value
+   float mult=1;
+   
+   // calculate the difference between the two points
+   diff_x = point1.x - point2.x;
+   diff_y = point1.y - point2.y;
+   diff_z = point1.z - point2.z; 
+   
+   if(point1.x < point2.x){println("open");mult=1;}else{println("close");mult=-1;}
+   // calculate the Euclidean distance between the two points
+   distance = mult*(sqrt(pow(diff_x,2)+pow(diff_y,2)+pow(diff_z,2)));
+  // println(distance);
+ 
+   return distance;  // return the distance as a float
+}
+
+float getUsersDistance(int userId,int joint1Id,int userId2,int joint2Id)
+{
+  float UserDistance;    // to store final distance value
+ 
+  // two PVectors to hold the position of two joints
+  PVector joint1 = new PVector();
+  PVector joint2 = new PVector();
+ 
+  // get 3D position of both joints
+  kinect.getJointPositionSkeleton(userId,joint1Id,joint1);
+  kinect.getJointPositionSkeleton(userId2,joint2Id,joint2);
+ 
+ UserDistance = distance3D(joint1,joint2);    // calcualte the distance between the two joints
+
+ 
+  return UserDistance;
+}
+
+
+///////////////////// calculate the distance between two  users in 3D space and return it as a float
+float distance3DBetweenUsers(PVector point1,  PVector point2)
+{
+   float diff_x, diff_y, diff_z;    // to store differences along x, y and z axes
+   float distanceBetweenUsers;                  // to store final distance value
+   float mult=1;
+   
+   // calculate the difference between the two points
+   diff_x = point1.x - point2.x;
+   diff_y = point1.y - point2.y;
+   diff_z = point1.z - point2.z; 
+   
+   if(point1.x < point2.x){println("open");mult=1;}else{println("close");mult=-1;}
+   // calculate the Euclidean distance between the two points
+   distanceBetweenUsers = mult*(sqrt(pow(diff_x,2)+pow(diff_y,2)+pow(diff_z,2)));
+   println(distanceBetweenUsers);
+ 
+   return distanceBetweenUsers;  // return the distance as a float
+}
+
+
+
