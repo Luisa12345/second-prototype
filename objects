@@ -1,0 +1,100 @@
+class Ball {
+   
+  
+  
+  int num= nuM;
+  int changeDirection = 1;
+  float []  xChange =new float[num];
+  
+  
+  float [] r  = new float[num];
+  
+  float [] cX = new float[num];
+  
+  
+  float [] cY = new float[num];
+  float UsersDista =UsersDist;
+  
+  float [] hue = new float[num];
+  float [] saturation = new float[num];
+  float [] brightness = new float[num];
+  float [] alpha = new float[num];
+
+
+
+  
+  //I am getting the volume for the previous tab
+  float volume = volume1*10;
+  
+  
+
+  
+  
+  Ball() {
+
+    
+     for (int i = 0; i < cY.length; i++){
+      //they all have same length so... all at once
+      // here you populate them...
+      
+    xChange[i] =Xchange;
+    //println("Xchange", Xchange);
+    cX[i] = 2*width/3 +s;
+    //println("xChange",  i, xChange [i]);
+    cY[i] =random(UsersDist, height-29 - UsersDista);
+    r [i] = rad + random(-5, 10);
+    
+    
+    
+    hue [i] = Hue+random(-20,20);
+    saturation [i] = random(200,250);
+    brightness [i] = random(200,250);
+    
+    ///the transparency changes based on the amount of noise
+    alpha [i] = map(volume, 0.01, 3, 70, 240)+(random(-5,5));
+        //println(alpha[i]);
+     }
+    
+  }
+
+   void update()  {
+     
+
+    //interpolation += interpolationSpeed;
+
+   }
+ 
+ void display() {
+     
+    colorMode(HSB);
+    
+     behavior();
+     noStroke();
+       
+     for (int i = 0; i < num; i++) {
+    // Initialize each object in the array.
+    
+     stroke(hue[i],saturation[i], brightness[i],alpha[i]);
+     strokeWeight(5);
+     noFill();
+     ellipse(cX[i] +xChange[i]*changeDirection, cY[i], r[i],r[i]);
+     if(changeDirection==1){changeDirection = -1;} else if (changeDirection == -1){changeDirection=1;}
+  }
+}
+
+void behavior(){
+  
+    
+
+
+
+  
+    
+  }
+  
+
+}
+ 
+   
+    
+  
